@@ -1,9 +1,8 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import requests
+import json
 
-# 1. Mengambil API Key dari sistem keamanan Cloud (Environment Variable)
-# Jangan menulis API Key langsung di sini agar tidak dicuri orang!
+# 1. Mengambil API Key dari Streamlit Secrets
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -15,13 +14,9 @@ st.set_page_config(page_title="AI Generator Modul Ajar", page_icon="📝", layou
 st.title("📝 Generator Modul Ajar Kurikulum Merdeka")
 st.write("Buat perangkat ajar instan berbasis AI. Isi form di bawah ini!")
 
-# Jika API Key belum disetting di server
 if not api_key:
     st.error("API Key belum dikonfigurasi di server. Silakan atur di Streamlit Secrets.")
 else:
-    # Inisialisasi Google GenAI Client
-    client = genai.Client(api_key=api_key)
-
     # 2. Form Input untuk Guru
     mapel = st.text_input("Mata Pelajaran (Contoh: Matematika, IPAS, Bahasa Indonesia)")
     
@@ -44,7 +39,10 @@ else:
         else:
             with st.spinner("Sedang merancang modul ajar standar Kemendikbud... Mohon tunggu..."):
                 try:
-                    # Sistem instruksi agar Gemini menyamar jadi pakar kurikulum
+                    # Alamat API Resmi Google Gemini (Jalur Langsung)
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                    
+                    # Instruksi Sistem agar hasil akurat
                     instruksi_sistem = (
                         "Anda adalah seorang fasilitator Kurikulum Merdeka yang sangat ahli. "
                         "Tugas Anda adalah menyusun Modul Ajar yang lengkap, sistematis, dan siap pakai. "
@@ -64,27 +62,43 @@ else:
                     Sajikan dalam format tulisan Markdown yang rapi, jelas, dan profesional.
                     """
 
-                    # Memanggil model gemini-1.5-flash
-                    response = client.models.generate_content(
-                        model='models/gemini-1.5-flash',
-                        contents=prompt_guru,
-                        config=types.GenerateContentConfig(
-                            system_instruction=instruksi_sistem,
-                            temperature=0.7,
-                        ),
-                    )
+                    # Menyusun data JSON sesuai standar API Gemini
+                    payload = {
+                        "contents": [{
+                            "parts": [{"text": prompt_guru}]
+                        }],
+                        "systemInstruction": {
+                            "parts": [{"text": instruksi_sistem}]
+                        },
+                        "generationConfig": {
+                            "temperature": 0.7
+                        }
+                    }
 
-                    # Menampilkan hasil ke layar
-                    st.success("Selesai! Silakan salin modul di bawah ini:")
-                    st.markdown(response.text)
-                    
-                    # Fitur unduh sebagai teks
-                    st.download_button(
-                        label="Unduh Hasil (.txt)",
-                        data=response.text,
-                        file_name=f"Modul_Ajar_{mapel.replace(' ', '_')}.txt",
-                        mime="text/plain"
-                    )
+                    headers = {"Content-Type": "application/json"}
+
+                    # Menembak API secara langsung
+                    response = requests.post(url, headers=headers, data=json.dumps(payload))
+                    res_json = response.json()
+
+                    # Cek jika ada error dari Google
+                    if "error" in res_json:
+                        st.error(f"Error dari Google API: {res_json['error']['message']}")
+                    else:
+                        # Mengambil teks hasil generate
+                        hasil_teks = res_json['candidates'][0]['content']['parts'][0]['text']
+                        
+                        # Menampilkan hasil ke layar
+                        st.success("Selesai! Silakan salin modul di bawah ini:")
+                        st.markdown(hasil_teks)
+                        
+                        # Fitur unduh sebagai teks
+                        st.download_button(
+                            label="Unduh Hasil (.txt)",
+                            data=hasil_teks,
+                            file_name=f"Modul_Ajar_{mapel.replace(' ', '_')}.txt",
+                            mime="text/plain"
+                        )
 
                 except Exception as e:
                     st.error(f"Terjadi kesalahan teknis: {e}")
