@@ -40,7 +40,7 @@ else:
             with st.spinner("Sedang merancang modul ajar standar Kemendikbud... Mohon tunggu..."):
                 try:
                     # Alamat API Resmi Google Gemini (Jalur Langsung)
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
                     
                     # Instruksi Sistem agar hasil akurat
                     instruksi_sistem = (
