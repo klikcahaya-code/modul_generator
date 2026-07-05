@@ -66,7 +66,7 @@ else:
 
                     # Memanggil model gemini-1.5-flash
                     response = client.models.generate_content(
-                        model='gemini-1.5-flash',
+                        model='models/gemini-1.5-flash',
                         contents=prompt_guru,
                         config=types.GenerateContentConfig(
                             system_instruction=instruksi_sistem,
