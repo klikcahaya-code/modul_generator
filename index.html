@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Modul Ajar & LKPD MTs Negeri 8 Tangerang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Library untuk Export Word -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+        
+        body { font-family: "Inter", sans-serif; }
+        
+        /* Tema Gradient Custom */
+        .premium-gradient {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
+            border: 1px solid #cbd5e1;
+        }
+        
+        /* Styling Area Dokumen Web (Meniru cetakan Word Premium) */
+        #content-body {
+            color: #000000;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 11pt;
+            line-height: 1.3; /* Dipersempit agar mirip Word */
+        }
+        #content-body h1, #content-body h2, #content-body h4 {
+            color: #000000;
+            margin-top: 13.5pt;
+            margin-bottom: 6pt;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        /* Judul Bagian Premium (H3) */
+        #content-body h3 { 
+            font-size: 14pt; 
+            font-weight: bold; 
+            border-bottom: 1.5pt solid #1e3a8a; 
+            padding-bottom: 4pt; 
+            color: #1e3a8a; 
+            text-transform: uppercase;
+            margin-top: 18pt;
+            margin-bottom: 9pt;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #content-body table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-top: 5pt;
+            margin-bottom: 15pt; 
+            background-color: #ffffff;
+            font-size: 11pt;
+            table-layout: fixed; 
+        }
+        #content-body th, #content-body td { 
+            border: 1pt solid #cbd5e1; 
+            padding: 4pt 6pt; /* Padding diperkecil meniru Word */
+            text-align: left; 
+            vertical-align: top; 
+            word-wrap: break-word; 
+        }
+        
+        /* Style Tabel Premium Khusus Preview Web */
+        #content-body th { 
+            background-color: #1e3a8a !important; 
+            color: #ffffff !important;
+            font-weight: bold; 
+            border-color: #1e3a8a !important;
+        }
+        /* Warnai kolom pertama saja agar terlihat berkelas (abaikan tabel layout footer) */
+        #content-body table:not([style*="border: none"]) tr td:first-child {
+            background-color: #f1f5f9;
+            font-weight: 600;
+        }
+
+        #content-body tr {
+            page-break-inside: avoid;
+        }
+
+        /* KHUSUS: SPASI 1 UNTUK TABEL AWAL */
+        #content-body table:first-of-type,
+        #content-body table:nth-of-type(2),
+        #content-body table:nth-of-type(3) {
+            margin-bottom: 15pt;
+        }
+        
+        /* Merapikan elemen dalam sel tabel */
+        #content-body td p { margin-top: 0; margin-bottom: 4.5pt; }
+        #content-body td p:last-child { margin-bottom: 0; }
+        #content-body td ul, #content-body td ol { margin-top: 0; margin-bottom: 0; padding-left: 18pt; }
+        #content-body td li { margin-bottom: 2pt; }
+        #content-body td li:last-child { margin-bottom: 0; font-weight: normal; } /* reset fw for list */
+        
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.85);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-800 min-h-screen font-sans">
+
+    <!-- Custom Alert Modal (Replacing browser alert()) -->
+    <div id="custom-alert" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 z-[9999] flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div id="alert-icon" class="text-5xl mb-4 text-center">⚠️</div>
+            <h3 id="alert-title" class="text-2xl font-bold text-slate-800 text-center mb-2">Peringatan</h3>
+            <p id="alert-message" class="text-slate-600 text-center mb-8 font-medium">Pesan peringatan.</p>
+            <button onclick="closeAlert()" class="w-full bg-blue-700 text-white font-bold py-3.5 rounded-xl hover:bg-blue-800 transition-colors shadow-md">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="loading-overlay">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-slate-800 mb-4 shadow-lg"></div>
+        <p class="text-xl font-bold text-slate-800 mb-2">AI sedang menyusun Modul...</p>
+        <p class="text-sm text-gray-600 font-medium">Proses ini memakan waktu beberapa detik. Harap tunggu.</p>
+    </div>
+
+    <!-- HEADER & FORM -->
+    <div class="max-w-5xl mx-auto p-4 md:p-8 no-print">
+        <div class="premium-gradient rounded-3xl shadow-[0_20px_50px_rgb(0,0,0,0.3)] p-6 md:p-10 mb-8 relative overflow-hidden">
+            <!-- Dekorasi Shine -->
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-70"></div>
+            
+            <!-- Badge / Kredit Kreator -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div class="inline-flex items-center gap-2 bg-slate-800 text-slate-100 text-xs px-4 py-2 rounded-full font-semibold tracking-wide shadow-md">
+                    <span>✨</span> Desain oleh Ahmad Zakiya, S.Kom.
+                </div>
+                <div class="inline-flex items-center gap-2 bg-red-100 text-red-700 border border-red-200 text-xs px-4 py-2 rounded-full font-bold tracking-wide shadow-sm">
+                    ⚠️ Aplikasi Tidak Diperjualbelikan
+                </div>
+            </div>
+
+            <div class="mb-8 border-b border-slate-300 pb-6">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 mb-2 tracking-tight flex items-center gap-3">
+                    <span class="text-4xl">🤖</span> AI Modul Ajar
+                </h1>
+                <p class="text-base md:text-lg text-slate-600 font-medium">Generator RPP & Modul Ajar Kurikulum Merdeka</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <div class="md:col-span-2 lg:col-span-3">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Topik Utama / Materi Pokok</label>
+                    <input type="text" id="topic" class="w-full bg-white border-2 border-slate-200 p-4 rounded-xl focus:border-slate-800 focus:ring-4 focus:ring-slate-100 outline-none transition-all text-slate-800 font-medium" placeholder="Contoh: Algoritma Dasar: Mengenal Pemrograman Visual Block">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mata Pelajaran</label>
+                    <select id="mapel" class="w-full bg-white border-2 border-slate-200 p-3.5 rounded-xl focus:border-slate-800 outline-none transition-all text-slate-800 font-medium">
+                        <option value="Informatika">Informatika</option>
+                        <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Fase / Kelas</label>
+                    <select id="fase" class="w-full bg-white border-2 border-slate-200 p-3.5 rounded-xl focus:border-slate-800 outline-none transition-all text-slate-800 font-medium">
+                        <option value="Fase D / Kelas VII">Fase D / Kelas VII</option>
+                        <option value="Fase D / Kelas VIII">Fase D / Kelas VIII</option>
+                        <option value="Fase D / Kelas IX">Fase D / Kelas IX</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Tahun Ajaran</label>
+                    <input type="text" id="tahun_ajaran" class="w-full border-2 border-slate-300 p-3.5 rounded-xl focus:border-slate-800 outline-none bg-slate-100 transition-all text-slate-800 font-medium" placeholder="Contoh: 2026/2027">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Model Pembelajaran</label>
+                    <select id="model_pembelajaran" class="w-full bg-white border-2 border-slate-200 p-3.5 rounded-xl focus:border-slate-800 outline-none transition-all text-slate-800 font-medium">
+                        <option value="Problem Based Learning (PBL)">Problem Based Learning (PBL)</option>
+                        <option value="Project Based Learning (PjBL)">Project Based Learning (PjBL)</option>
+                        <option value="Discovery Learning">Discovery Learning</option>
+                        <option value="Inquiry Learning">Inquiry Learning</option>
+                        <option value="Cooperative Learning">Cooperative Learning</option>
+                        <option value="Tatap Muka / Konvensional Terstruktur">Tatap Muka / Reguler</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nama Guru</label>
+                    <select id="teacher" class="w-full bg-white border-2 border-slate-200 p-3.5 rounded-xl focus:border-slate-800 outline-none transition-all text-slate-800 font-medium">
+                        <option value="Ahmad Zakiya, S.Kom.">Ahmad Zakiya, S.Kom.</option>
+                        <option value="Suhendra, S.H.">Suhendra, S.H.</option>
+                    </select>
+                
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Sekolah (Instansi)</label>
+                    <select id="school" class="w-full bg-white border-2 border-slate-200 p-3.5 rounded-xl focus:border-slate-800 outline-none transition-all text-slate-800 font-medium">
+                        <option value="MTs Negeri 8 Tangerang">MTs Negeri 8 Tangerang</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-10 flex flex-col sm:flex-row gap-4">
+                <button onclick="generateAIContent()" class="action-btn flex-1 bg-slate-800 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-900 shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.3)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-700">
+                    <span>✨ Buat Modul Ajar dengan AI</span>
+                </button>
+                <button onclick="exportDoc()" class="action-btn flex-1 bg-blue-700 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-800 transition-all shadow-[0_10px_20px_rgba(29,78,216,0.3)] hover:shadow-[0_15px_30px_rgba(29,78,216,0.4)] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-600">
+                    <span>📝 Unduh Format Word</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AREA DOKUMEN CETAK -->
+    <div id="print-area" class="max-w-5xl mx-auto bg-white p-8 md:p-16 shadow-[0_20px_60px_rgba(0,0,0,0.4)] mb-20 print-container hidden rounded-sm" style="min-height: 297mm; box-sizing: border-box;">
+        <div id="content-body">
+            <div class="text-center py-24 text-gray-400">
+                <div class="text-6xl mb-4">📄</div>
+                <p class="text-lg">Silakan lengkapi form dan klik "Buat Modul Ajar dengan AI"</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isContentGenerated = false; 
+
+        // Fungsi Kustom untuk menggantikan alert()
+        function showMessage(title, message, type = 'warning') {
+            const modal = document.getElementById('custom-alert');
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('alert-icon').innerText = type === 'error' ? '❌' : (type === 'success' ? '✅' : '⚠️');
+            modal.classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('custom-alert').classList.add('hidden');
+        }
+
+        async function fetchWithRetry(url, options) {
+            const delays = [1000,2000,4000];
+            for(let i=0;i<=delays.length;i++){
+                try{
+                    const response = await fetch(url,options);
+                    const data = await response.json();
+                    if(!response.ok){
+                        throw new Error(
+                            data.error?.message ||
+                            `HTTP ${response.status}`
+                        );
+                    }
+                    return data;
+                }catch(err){
+                    if(i===delays.length)
+                        throw err;
+                    await new Promise(r=>setTimeout(r,delays[i]));
+                }
+            }
+        }
+
+        function setButtonsDisabled(isDisabled) {
+            const buttons = document.querySelectorAll(".action-btn");
+            buttons.forEach(btn => btn.disabled = isDisabled);
+        }
+
+        async function generateAIContent() {
+            const topic = document.getElementById("topic").value.trim();
+            if (!topic) {
+                showMessage("Informasi Kurang", "Harap masukkan topik utama atau materi terlebih dahulu!", "warning");
+                return;
+            }
+
+            setButtonsDisabled(true);
+            document.getElementById("loading").style.display = "flex";
+            isContentGenerated = false;
+
+            const mapel = document.getElementById("mapel").value || "................";
+            const fase = document.getElementById("fase").value || "................";
+            const tahunAjaran = document.getElementById("tahun_ajaran").value || "................";
+            const modelPembelajaran = document.getElementById("model_pembelajaran").value;
+            const teacher = document.getElementById("teacher").value || "................";
+            const school = document.getElementById("school").value || "................";
+            
+            const systemPrompt = `Anda adalah ahli kurikulum dan pedagogi profesional pembuat Modul Ajar kurikulum berbasis deep learning (pembelajaran mendalam) yang terintegrasi dengan pendekatan Kurikulum Berbasis Cinta.
+Output HANYA berupa HTML murni. DILARANG KERAS menyertakan tag <html>, <head>, atau <body>. 
+PENTING (ANTI-MARKDOWN): JANGAN GUNAKAN SIMBOL MARKDOWN. Gunakan <strong> untuk tebal, <h3> untuk judul.
+HAPUS bagian "Profil Pelajar Pancasila", gunakan hanya "Dimensi Profil Lulusan".
+
+ATURAN STRUKTUR DOKUMEN (TABEL PREMIUM):
+Awali dokumen dengan teks rata tengah: "<h3>RENCANA PELAKSANAAN PEMBELAJARAN (RPM)</h3><br><h3>INFORMASI UMUM</h3>".
+Kemudian, WAJIB buat 3 tabel terpisah berturut-turut untuk bagian A, B, dan C. Gunakan <table> dengan 2 kolom (Kolom Kiri untuk nama field tebal, Kolom Kanan untuk isinya).
+
+1. A. IDENTITAS MODUL
+(Sajikan dalam 1 Tabel). Berisi baris: Penyusun, Instansi, Materi, Fase / Kelas, Model, Topik, Alokasi Waktu (termasuk Tahun Ajaran).
+
+2. B. IDENTIFIKASI
+(Sajikan dalam 1 Tabel). Berisi 3 baris komponen pokok:
+- Peserta didik (Berikan deskripsi contoh, misal: Kesiapan awal peserta didik diidentifikasi melalui kuis cepat...)
+- Materi pelajaran (Deskripsikan konsep materinya secara spesifik)
+- Dimensi Profil Lulusan (Pilih yang relevan HANYA dari 8 dimensi ini: Keimanan dan Ketakwaan, Kewargaan, Penalaran Kritis, Kreativitas, Kolaborasi, Kemandirian, Kesehatan (Well-being), Komunikasi).
+
+3. C. DESAIN PEMBELAJARAN
+(Sajikan dalam 1 Tabel). Berisi baris: Capaian Pembelajaran, Lintas Displin Ilmu, Tujuan Pembelajaran, Topik Pembelajaran, Praktik Pedagogis, Kemitraan pembelajaran, Lingkungan Belajar, Pemanfaatan Digital. Berikan deskripsi yang sesuai and rinci di kolom kanannya.
+
+4. KOMPONEN INTI & LANGKAH PEMBELAJARAN
+Sajikan dalam tabel atau teks rapi. Langkah pembelajaran harus mendetail mengintegrasikan fase Mindful, Meaningful, dan Joyful.  Kaitkan dengan nilai-nilai kasih sayang, penerimaan, empati, dan kepedulian terhadap sesama, lingkungan, atau Tuhan. Pasangkan pengalaman memahami, mengaplikasi, dan merefleksikan nilai-nilai ini di sepanjang kegiatan.  lengkap dengan estimasi waktu. HINDARI kalimat panjang dalam sel tabel, WAJIB pecah menggunakan poin-poin <ul><li> agar teks terdistribusi secara vertikal.
+
+5. ASESMEN, REMEDIAL & PENGAYAAN, REFLEKSI
+Sajikan dengan rapi.
+
+6. LEMBAR KERJA PESERTA DIDIK (LKPD)
+Berbasis teks. Sediakan kotak kosong untuk siswa menjawab (gunakan tag div dengan border hitam dan tinggi minimal 150px).
+
+7. RUBRIK PENILAIAN
+Buat tabel rubrik penilaian yang jelas.`;
+
+            const userQuery = `Buatkan Modul Ajar lengkap sesuai pedoman (Identitas, Identifikasi, Desain Pembelajaran, Langkah, dll) tentang materi: "${topic}". 
+Mata Pelajaran: ${mapel}. Jenjang/Fase: ${fase}. Tahun Ajaran: ${tahunAjaran}. Guru Penyusun: ${teacher}. Instansi/Sekolah: ${school}. 
+Gunakan Model Pembelajaran: ${modelPembelajaran}. Adopsi pendekatan Deep Learning yang terintegrasi dengan pendekatan Kurikulum Berbasis Cinta. 
+Ingat: Pastikan bagian A. IDENTITAS MODUL, B. IDENTIFIKASI, dan C. DESAIN PEMBELAJARAN wajib menggunakan format TABEL PREMIUM 2 Kolom. Gunakan tag <ul><li> untuk deskripsi yang panjang agar tidak merusak lebar tabel word nanti.`;
+
+            try {
+                const apiKey = ""; // Kunci API otomatis disediakan oleh sistem lingkungan Canvas
+                const result = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: {
+                            temperature: 0.7,
+                        }
+                    })
+                });
+
+                if (!result || !result.candidates || result.candidates.length === 0) {
+                    if (result.error) {
+                        throw new Error(result.error.message || "Error dari API Gemini");
+                    }
+                    throw new Error("API mengembalikan respon kosong.");
+                }
+                
+                const candidate = result.candidates?.[0];
+                if (!candidate) {
+                    throw new Error("AI tidak mengembalikan hasil.");
+                }
+
+                let htmlContent = candidate.content?.parts?.[0]?.text;
+                if (!htmlContent) {
+                    throw new Error("Isi jawaban AI kosong.");
+                }
+
+                if (result.promptFeedback?.blockReason) {
+                    throw new Error("Prompt diblokir: " + result.promptFeedback.blockReason);
+                }
+                
+                // Pembersihan HTML yang dihasilkan AI
+                htmlContent = htmlContent.replace(/```html/ig, "").replace(/```/g, "");
+                htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                htmlContent = htmlContent.replace(/(^|<br>|\n)#{1,4}\s+(.*?)(?=$|\n|<br>|<\/?div>|<\/?p>)/g, "$1<h3>$2</h3>");
+                htmlContent = htmlContent.replace(/(^|<br>|\n)\*\s+(.*?)(?=$|\n|<br>)/g, "$1<li>$2</li>");
+                htmlContent = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+
+                renderDocument(htmlContent, mapel, fase, teacher, school);
+                isContentGenerated = true; 
+            } catch (error) {
+                console.error("Error generation AI:", error);
+                showMessage("Gagal Memproses", error.message, "error");
+            } finally {
+                document.getElementById("loading").style.display = "none";
+                setButtonsDisabled(false); 
+            }
+        }
+
+        function renderDocument(content, mapel, fase, teacher, school) {
+            const container = document.getElementById("print-area");
+            const body = document.getElementById("content-body");
+            
+            container.classList.remove("hidden");
+            
+            // KOP PREMIUM: Menggunakan format persis seperti contoh .doc
+            const header = "<table class=\"kop-table\" style=\"width: 100%; border-collapse: collapse; margin-bottom: 15pt; border: none;\">" +
+                "<tr><td style=\"background-color: #1e3a8a; padding: 18.75pt 15.0pt; text-align: center; border: none; border-bottom: 5px solid #fbbf24; border-radius: 6px 6px 0 0;\">" +
+                "<h1 style=\"font-size: 18pt; font-weight: bold; margin: 0 0 7.5pt 0; color: #ffffff; text-transform: uppercase; font-family: 'Arial', sans-serif; line-height: normal;\">MODUL AJAR KURIKULUM MERDEKA</h1>" +
+                "<h2 style=\"font-size: 12pt; font-weight: normal; margin: 0; color: #e0f2fe; font-family: 'Arial', sans-serif;\">Mata Pelajaran: <strong>" + mapel + "</strong> &nbsp;|&nbsp; Fase/Kelas: <strong>" + fase + "</strong></h2>" +
+                "</td></tr></table>";
+
+            const dateOptions = { day: "numeric", month: "long", year: "numeric" };
+            const today = new Date().toLocaleDateString("id-ID", dateOptions);
+
+            const footer = "<div class=\"page-break\"></div>" +
+                "<div style=\"margin-top: 37.5pt; width: 100%; page-break-inside: avoid;\">" +
+                "<table class=\"signature-table\" style=\"border: none !important; width: 100%; margin: 0; background-color: transparent; table-layout: fixed;\">" +
+                "<tr style=\"border: none !important; background-color: transparent;\">" +
+                "<td style=\"border: none !important; width: 50%; text-align: center; vertical-align: bottom; padding: 7.5pt; font-size: 11pt; background-color: transparent !important; font-weight: normal !important;\">" +
+                "Mengetahui,<br>Kepala Madrasah<br><br><br><br><br><br>" +
+                "( __________________________ )<br>" +
+                "NIP. ..................................." +
+                "</td>" +
+                "<td style=\"border: none !important; width: 50%; text-align: center; vertical-align: bottom; padding: 7.5pt; font-size: 11pt; background-color: transparent !important; font-weight: normal !important;\">" +
+                "......................, " + today + "<br>" +
+                "Guru Mata Pelajaran<br><br><br><br><br><br>" +
+                "<strong>" + teacher + "</strong><br>" +
+                "NIP. ..................................." +
+                "</td>" +
+                "</tr>" +
+                "</table>" +
+                "</div>" +
+                "<!-- KREDIT KREATOR PADA FILE CETAK -->" +
+                "<div style=\"margin-top: 30pt; border-top: 1pt solid #ccc; padding-top: 8pt; text-align: center; font-size: 10pt; color: #555; font-family: 'Arial', sans-serif;\">" +
+                "<strong>Modul Ajar Premium</strong><br>" +
+                "Desain oleh Ahmad Zakiya, S.Kom. - www.zackylotus.blogspot.com<br>" +
+                "<em>Aplikasi tidak diperjualbelikan</em>" +
+                "</div>";
+
+            body.innerHTML = header + content + footer;
+            container.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // --- FUNGSI EXPORTDOC UNTUK MS WORD ---
+        function exportDoc() {
+            if (!isContentGenerated) {
+                showMessage("Modul Belum Dibuat", "Silakan isi form dan klik 'Buat Modul Ajar dengan AI' terlebih dahulu untuk menghasilkan dokumen.", "warning");
+                return;
+            }
+            
+            setButtonsDisabled(true);
+
+            try {
+                const originalBody = document.getElementById("content-body");
+                const originalTables = originalBody.querySelectorAll("table");
+                
+                const clone = originalBody.cloneNode(true);
+                const cloneTables = clone.querySelectorAll("table");
+
+                cloneTables.forEach((table, index) => {
+                    const origTable = originalTables[index];
+
+                    // Identifikasi secara spesifik tabel Tanda Tangan dan tabel KOP
+                    const isSignatureTable = table.classList.contains("signature-table");
+                    const isKopTable = table.classList.contains("kop-table");
+                    
+                    // Properti Khusus MS Word agar tabel patuh pada lebar 100%
+                    table.setAttribute("cellspacing", "0");
+                    table.setAttribute("width", "100%");
+                    table.style.width = "100%";
+                    table.style.tableLayout = "fixed"; 
+                    table.style.msoTableLayoutAlt = "fixed"; 
+                    
+                    if (isSignatureTable || isKopTable) {
+                        table.setAttribute("border", "0");
+                        table.style.border = "none";
+                        if (isSignatureTable) {
+                            table.style.marginBottom = "10pt";
+                            table.setAttribute("cellpadding", "0");
+                        } else {
+                            // Untuk KOP tabel, jangan set padding 0 agar layout KOP tidak rusak
+                            table.style.marginBottom = "15pt";
+                        }
+                    } else {
+                        table.setAttribute("border", "1");
+                        table.style.borderCollapse = "collapse";
+                        table.style.marginBottom = "15pt";
+                        table.style.border = "1.0pt solid #cbd5e1"; // Border disesuaikan dgn pt
+                    }
+
+                    if (origTable && origTable.rows.length > 0) {
+                        let referenceRow = origTable.rows[0];
+                        for(let r=0; r < origTable.rows.length; r++) {
+                            let hasColspan = Array.from(origTable.rows[r].cells).some(cell => cell.colSpan > 1);
+                            if(!hasColspan) {
+                                referenceRow = origTable.rows[r];
+                                break;
+                            }
+                        }
+
+                        const totalWidth = origTable.offsetWidth;
+
+                        if (totalWidth > 0) {
+                            for(let r=0; r < table.rows.length; r++) {
+                                let currentRow = table.rows[r];
+                                let hasColspan = Array.from(currentRow.cells).some(cell => cell.colSpan > 1);
+                                
+                                if (!hasColspan) {
+                                    let accumulatedPercent = 0;
+                                    for (let i = 0; i < currentRow.cells.length; i++) {
+                                        const origCell = referenceRow.cells[i];
+                                        const cloneCell = currentRow.cells[i];
+                                        
+                                        if (origCell && cloneCell) {
+                                            // Hitung persentase kolom pasti 100%
+                                            let percent = Math.round((origCell.offsetWidth / totalWidth) * 100);
+                                            
+                                            if (i === currentRow.cells.length - 1) {
+                                                percent = 100 - accumulatedPercent;
+                                            }
+                                            accumulatedPercent += percent;
+                                            
+                                            cloneCell.style.width = percent + "%";
+                                            cloneCell.setAttribute("width", percent + "%");
+                                            cloneCell.style.maxWidth = percent + "%"; 
+                                            
+                                            // Paksa Word Wrap vertikal
+                                            cloneCell.style.wordWrap = "break-word";
+                                            cloneCell.style.whiteSpace = "normal";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Spasi rapat untuk tabel data biasa
+                    if (!isSignatureTable && !isKopTable) {
+                        table.removeAttribute("cellpadding"); // Dihapus agar pakai CSS padding
+                        table.style.lineHeight = "normal"; // Direset ke normal agar tidak terlalu tinggi di Word
+                    }
+                });
+
+                // Styling Elemen TH (Header Tabel)
+                const ths = clone.querySelectorAll("th");
+                ths.forEach((th) => {
+                    const table = th.closest("table");
+                    if (!table.classList.contains("signature-table") && !table.classList.contains("kop-table")) {
+                        th.style.backgroundColor = "#1e3a8a"; // Navy blue
+                        th.style.color = "#ffffff";
+                        th.style.border = "1.0pt solid #1e3a8a";
+                        th.style.fontWeight = "bold";
+                        th.style.textAlign = "left";
+                        th.style.padding = "3.0pt 4.0pt";
+                    }
+                });
+
+                // Styling Elemen TD (Isi Tabel)
+                const tds = clone.querySelectorAll("td");
+                tds.forEach((td) => {
+                    const table = td.closest("table");
+                    const isSignatureTable = table.classList.contains("signature-table");
+                    const isKopTable = table.classList.contains("kop-table");
+                    
+                    if (isSignatureTable) {
+                        td.style.border = "none";
+                        td.style.backgroundColor = "transparent";
+                        td.style.fontWeight = "normal";
+                        return; // Abaikan styling premium untuk tabel tanda tangan
+                    }
+                    
+                    if (isKopTable) {
+                        td.style.border = "none";
+                        return; // Pertahankan warna biru navy inline pada KOP
+                    }
+                    
+                    td.style.border = "1.0pt solid #cbd5e1";
+                    td.style.verticalAlign = "top";
+                    td.style.padding = "3.0pt 4.0pt"; // Padding rapat ala MS Word
+                    
+                    // Efek Premium tabel data: Kolom Pertama Berwarna
+                    if (!td.previousElementSibling) {
+                        td.style.backgroundColor = "#f1f5f9"; 
+                        td.style.fontWeight = "600";
+                    }
+                });
+
+                const content = clone.innerHTML;
+                
+                // Penambahan XML Namespace mso-* beserta penyisipan CSS internal
+                const htmlString = `
+                <html xmlns:v="urn:schemas-microsoft-com:vml"
+                xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:w="urn:schemas-microsoft-com:office:word"
+                xmlns:m="http://schemas-microsoft.com/office/2004/12/omml"
+                xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>Modul Ajar</title>
+                    <style>
+                        /* Set properti margin khusus untuk Office/Word (Portrait A4 Margin 54pt) */
+                        @page WordSection1 {
+                            size: 595.3pt 841.9pt; /* A4 */
+                            margin: 54.0pt 54.0pt 54.0pt 54.0pt; 
+                            mso-header-margin: 36.0pt;
+                            mso-footer-margin: 36.0pt;
+                            mso-paper-source: 0;
+                        }
+                        div.WordSection1 { page: WordSection1; }
+                        
+                        body, p, li, div { 
+                            font-family: 'Times New Roman', serif; 
+                            font-size: 11.0pt; 
+                            line-height: normal; 
+                            color: #000; 
+                            margin: 0 0 4.5pt 0; 
+                            mso-pagination: widow-orphan;
+                        }
+                        
+                        h1, h2, h4 { font-family: 'Arial', sans-serif; text-align: left; }
+                        h1 { text-align: center; font-size: 16.0pt; font-weight: bold; margin: 13.5pt 0 6.0pt 0; }
+                        h2 { text-align: center; font-size: 12.0pt; font-weight: normal; margin: 0; }
+                        
+                        /* Judul Bagian (H3) yang Elegan & Berwarna */
+                        h3 { 
+                            font-size: 14.0pt; 
+                            font-weight: bold; 
+                            border-bottom: solid #1e3a8a 1.5pt; 
+                            padding-bottom: 0cm;
+                            mso-padding-alt: 0cm 0cm 5.0pt 0cm; 
+                            color: #1e3a8a; 
+                            text-transform: uppercase; 
+                            margin: 18.0pt 0 9.0pt 0;
+                            font-family: 'Arial', sans-serif;
+                        }
+                        
+                        /* Pengaturan Ekstrem agar Tabel Word Disiplin max 100% width */
+                        table { 
+                            border-collapse: collapse; 
+                            width: 100% !important; 
+                            max-width: 100% !important; 
+                            mso-table-layout-alt: fixed; 
+                            table-layout: fixed !important; 
+                            margin-top: 0; 
+                            margin-bottom: 15.0pt; 
+                            mso-table-lspace: 0pt; 
+                            mso-table-rspace: 0pt;
+                        }
+                        
+                        th, td { 
+                            word-wrap: break-word !important; 
+                            white-space: normal !important; 
+                            mso-word-wrap: break-word !important;
+                            padding: 3.0pt 4.0pt;
+                        }
+                        
+                        tr { page-break-inside: avoid; }
+                        .page-break { page-break-before: always; clear: both; }
+                        ul, ol { margin-top: 0; margin-bottom: 0; padding-left: 18.0pt; }
+                        li { 
+                            font-weight: normal; 
+                            mso-margin-top-alt: auto; 
+                            mso-margin-bottom-alt: auto; 
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="WordSection1">
+                        ${content}
+                    </div>
+                </body>
+                </html>`;
+                
+                const blob = new Blob(['\ufeff', htmlString], { type: "application/msword" });
+                saveAs(blob, "Modul_Ajar_Kurikulum_Merdeka.doc");
+            } finally {
+                setButtonsDisabled(false);
+            }
+        }
+    </script>
+</body>
+</html>
